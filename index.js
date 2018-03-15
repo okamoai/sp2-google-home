@@ -6,33 +6,37 @@ const googleHomeSplatoon = require('./actions/splatoon')
 const controller = Botkit.slackbot({ debug: true })
 
 // BotKit 起動＆初期処理
-controller
-  .spawn({
-    token: config.slack.token,
-  })
-  .startRTM((err, bot) => {
-    if (err) {
-      throw new Error('Could not connect to Slack')
-    }
-    // 定期時刻に実行
-    new cron.CronJob({
-      cronTime: '00 00 00 * * *',
-      onTick: () => {
-        // セッション切れにならないよう定期的にアクセス
-        googleHomeSplatoon.getSchedule()
-      },
-      start: true,
-      timeZone: 'Asia/Tokyo',
+const startRTM = () => {
+  controller
+    .spawn({
+      token: config.slack.token,
     })
-  })
+    .startRTM(err => {
+      if (err) {
+        throw new Error('Could not connect to Slack')
+      }
+      // 定期時刻に実行
+      new cron.CronJob({
+        cronTime: '00 00 00 * * *',
+        onTick: () => {
+          // セッション切れにならないよう定期的にアクセス
+          googleHomeSplatoon.getSchedule()
+        },
+        start: true,
+        timeZone: 'Asia/Tokyo',
+      })
+    })
+}
 
 // Error: Stale RTM connection, closing RTM 対策
-controller.on('rtm_open', (bot, message) => {
+controller.on('rtm_open', () => {
   console.info('** The RTM api just connected!')
 })
-controller.on('rtm_close', (bot, message) => {
+controller.on('rtm_close', () => {
   console.info('** The RTM api just closed')
+  startRTM()
 })
+startRTM()
 
 // チャンネル別にアクションを指定する
 const channelActions = (bot, channel, text) => {
